@@ -19,6 +19,8 @@ this will install an executable in your default path for go executables $GOPATH/
 harx
 --------
 
+fork : go run cmd/harx/main.go -l ~/Desktop/test.har
+
 Usage: harx [options] har-file
 
     -l                           List files , lead by [index]
