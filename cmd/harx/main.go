@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -16,6 +17,45 @@ import (
 )
 
 var version string
+
+type PreData struct {
+	Cgi              []string   `json:"cgi"`
+	Info             []KeyValue `json:"info"`
+	VisitedPageCount int        `json:"visitedPageCount"`
+}
+
+func NewPreData() PreData {
+	infoList := make([]KeyValue, 0)
+	appid := KeyValue{
+		Key:   "appId",
+		Value: "wx440a980df1fce173",
+	}
+	infoList = append(infoList, appid)
+	icon := KeyValue{
+		Key:   "icon",
+		Value: "http://wx.qlogo.cn/mmhead/Q3auHgzwzM5l22hvUV0N49nnc8HlgXQ7DR5aQF58ujWlLprZmqxXkA/96",
+	}
+	infoList = append(infoList, icon)
+	nickname := KeyValue{
+		Key:   "nickname",
+		Value: "11",
+	}
+	infoList = append(infoList, nickname)
+	envVersion := KeyValue{
+		Key:   "envVersion",
+		Value: "trial",
+	}
+	infoList = append(infoList, envVersion)
+	version := KeyValue{
+		Key:   "version",
+		Value: "",
+	}
+	infoList = append(infoList, version)
+	return PreData{
+		Info:             infoList,
+		VisitedPageCount: 10,
+	}
+}
 
 type Har struct {
 	Log HLog
@@ -34,8 +74,12 @@ type HEntry struct {
 }
 
 type HRequest struct {
-	Url    string
-	Method string
+	Url         string
+	Method      string
+	HttpVersion string
+	Headers     []NameValue
+	QueryString []NameValue
+	PostData    PostData
 }
 
 type HResponse struct {
@@ -47,6 +91,18 @@ type HContent struct {
 	MimeType string
 	Text     string
 	Encoding string
+}
+
+type NameValue struct {
+	Name  string
+	Value string
+}
+type KeyValue struct {
+	Key   string
+	Value string
+}
+type PostData struct {
+	Text string
 }
 
 // dump files to dir, keep hostname and path info as subfolders.
@@ -84,7 +140,7 @@ func (e *HEntry) dumpDirectly(dir string) {
 func decode(str string, fileName string) {
 	data, err := base64.StdEncoding.DecodeString(str)
 	if err != nil {
-		log.Fatal(err," fileName:", fileName)
+		log.Fatal(err, " fileName:", fileName)
 	} else {
 		ioutil.WriteFile(fileName, data, os.ModePerm)
 	}
@@ -139,9 +195,15 @@ func handle(r *bufio.Reader) {
 		if har.Log.Version == "1.2" {
 			version12 = true
 		}
+		cgiList := make([]string, 0)
 		for index, entry := range har.Log.Entries {
-			output(index, entry)
+			b := listEntries(index, entry)
+			cgiList = append(cgiList, b)
 		}
+		pd := NewPreData()
+		pd.Cgi = cgiList
+		xx, _ := json.Marshal(&pd)
+		fmt.Println(string(xx))
 	}
 }
 
@@ -177,8 +239,34 @@ func output(index int, entry HEntry) {
 	}
 }
 
-func listEntries(index int, entry HEntry) {
-	fmt.Printf("[%3d][%6s][%25s][Size:%8d][URL:%s]\n", index, entry.Request.Method, entry.Response.Content.MimeType, entry.Response.Content.Size, entry.Request.Url)
+func listEntries(index int, entry HEntry) string {
+	var b bytes.Buffer
+	b.Write([]byte(entry.Request.Method))
+	b.Write([]byte(" "))
+	b.Write([]byte(entry.Request.Url))
+	b.Write([]byte(" "))
+	b.Write([]byte(entry.Request.HttpVersion))
+	b.Write([]byte("\r\n"))
+	for _, v := range entry.Request.Headers {
+		//if i == 0 && len(entry.Request.Headers) == 1 {
+		//	b.Write([]byte(fmt.Sprintf("%s: %s", v.Name, v.Value)))
+		//} else if i == len(entry.Request.Headers)-1 {
+		//	b.Write([]byte(fmt.Sprintf("%s: %s", v.Name, v.Value)))
+		//} else {
+		b.Write([]byte(fmt.Sprintf("%s: %s\r\n", v.Name, v.Value)))
+		//}
+	}
+	//b.Write([]byte("\r\n"))
+	b.Write([]byte("\r\n"))
+	fmt.Println(len(entry.Request.PostData.Text))
+	if len(entry.Request.PostData.Text) != 0 {
+		b.Write([]byte(entry.Request.PostData.Text))
+	}
+	//fmt.Println(b.String())
+	encodeString := base64.StdEncoding.EncodeToString(b.Bytes())
+	//fmt.Println(encodeString)
+	return encodeString
+	//fmt.Printf("[%3d][%6s][%25s][Size:%8d][URL:%s]\n", index, entry.Request.Method, entry.Response.Content.MimeType, entry.Response.Content.Size, entry.Request.Url)
 }
 
 func extractOne(entry HEntry) {
@@ -212,7 +300,7 @@ usage: harx [options] har-file
     -xm  mimetypePattern dir   eXtract to [dir] with MimetypePattern filter
     -xmd mimetypePattern dir   eXtract to [dir] Directly without hostname and path info, with MimetypePattern filter
     -v                         Print version information
-
+	
     `)
 }
 func main() {
