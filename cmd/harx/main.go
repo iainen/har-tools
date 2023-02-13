@@ -22,13 +22,14 @@ type PreData struct {
 	Cgi              []string   `json:"cgi"`
 	Info             []KeyValue `json:"info"`
 	VisitedPageCount int        `json:"visitedPageCount"`
+	Script           string     `json:"script"`
 }
 
 func NewPreData() PreData {
 	infoList := make([]KeyValue, 0)
 	appid := KeyValue{
 		Key:   "appId",
-		Value: "wx440a980df1fce173",
+		Value: "wx671bc478c73587ff",
 	}
 	infoList = append(infoList, appid)
 	icon := KeyValue{
@@ -38,7 +39,7 @@ func NewPreData() PreData {
 	infoList = append(infoList, icon)
 	nickname := KeyValue{
 		Key:   "nickname",
-		Value: "11",
+		Value: "LELABO",
 	}
 	infoList = append(infoList, nickname)
 	envVersion := KeyValue{
@@ -53,7 +54,8 @@ func NewPreData() PreData {
 	infoList = append(infoList, version)
 	return PreData{
 		Info:             infoList,
-		VisitedPageCount: 10,
+		VisitedPageCount: 25,
+		Script:           "",
 	}
 }
 
@@ -98,8 +100,8 @@ type NameValue struct {
 	Value string
 }
 type KeyValue struct {
-	Key   string
-	Value string
+	Key   string `json:"key"`
+	Value string `json:"value"`
 }
 type PostData struct {
 	Text string
@@ -258,7 +260,6 @@ func listEntries(index int, entry HEntry) string {
 	}
 	//b.Write([]byte("\r\n"))
 	b.Write([]byte("\r\n"))
-	fmt.Println(len(entry.Request.PostData.Text))
 	if len(entry.Request.PostData.Text) != 0 {
 		b.Write([]byte(entry.Request.PostData.Text))
 	}
