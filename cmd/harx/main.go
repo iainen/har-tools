@@ -16,6 +16,10 @@ import (
 	"strings"
 )
 
+var (
+	appId string
+)
+
 var version string
 
 type PreData struct {
@@ -23,13 +27,19 @@ type PreData struct {
 	Info             []KeyValue `json:"info"`
 	VisitedPageCount int        `json:"visitedPageCount"`
 	Script           string     `json:"script"`
+	Page             []string   `json:"page"`
+}
+
+type Data struct {
+	TaskId string  `json:"taskId"`
+	Data   PreData `json:"data"`
 }
 
 func NewPreData() PreData {
 	infoList := make([]KeyValue, 0)
 	appid := KeyValue{
 		Key:   "appId",
-		Value: "wx671bc478c73587ff",
+		Value: appId,
 	}
 	infoList = append(infoList, appid)
 	icon := KeyValue{
@@ -39,7 +49,7 @@ func NewPreData() PreData {
 	infoList = append(infoList, icon)
 	nickname := KeyValue{
 		Key:   "nickname",
-		Value: "LELABO",
+		Value: appId,
 	}
 	infoList = append(infoList, nickname)
 	envVersion := KeyValue{
@@ -54,8 +64,9 @@ func NewPreData() PreData {
 	infoList = append(infoList, version)
 	return PreData{
 		Info:             infoList,
-		VisitedPageCount: 25,
+		VisitedPageCount: 0,
 		Script:           "",
+		Page:             []string{},
 	}
 }
 
@@ -204,7 +215,10 @@ func handle(r *bufio.Reader) {
 		}
 		pd := NewPreData()
 		pd.Cgi = cgiList
-		xx, _ := json.Marshal(&pd)
+		d := Data{
+			Data: pd,
+		}
+		xx, _ := json.Marshal(&d)
 		fmt.Println(string(xx))
 	}
 }
@@ -315,6 +329,7 @@ func main() {
 	case "-l":
 		list = true
 		fileName = os.Args[2]
+		appId = os.Args[3]
 	case "-lu":
 		list = true
 		urlPattern = regexp.MustCompile(os.Args[2])
